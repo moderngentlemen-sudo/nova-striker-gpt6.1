@@ -96,7 +96,7 @@ export class World {
     this.initialEnemies = this.level.enemies.length;
   }
   setParty(party) { this.party = validParty(party); this.reset(); }
-  partySpawn(player, anchors) {
+  partySpawn(player, anchors, occupied = anchors) {
     for (const anchor of anchors.filter(p => p.grounded && !p.downed)) {
       const floor = this.level.platforms.find(r => anchor.x >= r.x && anchor.x <= r.x + r.w && Math.abs(anchor.y - r.y) < 2);
       if (!floor) continue;
@@ -104,6 +104,7 @@ export class World {
         const position = { x: anchor.x + offset, y: floor.y };
         const body = { x: position.x - player.w / 2, y: position.y - 60, w: player.w, h: 60 };
         if (body.x < floor.x || body.x + body.w > floor.x + floor.w || this.level.platforms.some(r => overlap(body, r))) continue;
+        if (occupied.some(p => overlap(body, { x: p.x - p.w / 2 - 4, y: p.y - 60, w: p.w + 8, h: 60 }))) continue;
         if (!this.visible(anchor.x, anchor.y - 30, position.x, position.y - 30)) continue;
         if (!this.checkpointReached && this.level.room !== 'ascent' && anchor.x <= 1710 && position.x > 1710) continue;
         if (this.level.objective === 'reach' && distance(position, this.level.exit) < 85 && distance(anchor, this.level.exit) >= 85) continue;
@@ -117,6 +118,7 @@ export class World {
   updateParty(party) {
     const next = validParty(party);
     const survivors = this.players.filter(p => next.some(spec => spec.slot === p.id));
+    const occupied = [...survivors];
     // Prepare every change before mutating the live encounter, so a rejected join is atomic.
     const prepared = next.map(spec => {
       const current = this.players.find(p => p.id === spec.slot);
@@ -124,7 +126,9 @@ export class World {
       if (previous && previous.kit !== spec.kit) throw new RangeError('P' + (spec.slot + 1) + ' keeps their character for this attempt. Use Restart with this squad to change it.');
       if (!current && (this.won || this.defeated)) throw new RangeError('This attempt has ended. Use Restart with this squad to add players.');
       const player = previous || makePlayer(spec.slot, spec.kit, spec.device, this.level.checkpoint);
-      return { spec, player, current, position: current ? null : this.partySpawn(player, survivors) };
+      const position = current ? null : this.partySpawn(player, survivors, occupied);
+      if (position) occupied.push({ ...player, ...position });
+      return { spec, player, current, position };
     });
     const departed = this.players.filter(p => !next.some(spec => spec.slot === p.id));
     const changes = [];

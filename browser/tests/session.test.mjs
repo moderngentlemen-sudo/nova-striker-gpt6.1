@@ -79,12 +79,24 @@ test('a newcomer fits on the same platform without passing through a wall', () =
   assert.ok(!world.level.platforms.some(r => overlap(box(world.players[1]), r)));
 });
 
+test('a batch of three joining players gets distinct clear positions', () => {
+  const world = grounded();
+  world.updateParty([nova, echo, tank, { slot: 3, kit: 'support', device: 'simulated' }]);
+  for (const p of world.players) {
+    assert.ok(!world.level.platforms.some(r => overlap(box(p), r)));
+    assert.ok(world.players.every(other => p === other || !overlap(box(p), box(other))));
+  }
+});
+
 test('joining cannot activate a checkpoint or reach beacon just beyond the surviving player', () => {
   const world = grounded(); world.players[0].x = 1710;
   assert.throws(() => world.updateParty([nova, echo]), /Land on a clear platform/);
   assert.equal(world.checkpointReached, false);
   const ascent = grounded('ascent');
   Object.assign(ascent.players[0], { x: 850, y: 440, grounded: true });
+  // The narrow safe area cannot fit a second body without activating the beacon.
+  assert.throws(() => ascent.updateParty([nova, echo]), /Land on a clear platform/);
+  Object.assign(ascent.players[0], { x: 1110, y: 440, grounded: true });
   ascent.updateParty([nova, echo]);
   assert.ok(ascent.players.every(p => distance(p, ascent.level.exit) >= 85));
   ascent.step(STEP); assert.equal(ascent.won, false);

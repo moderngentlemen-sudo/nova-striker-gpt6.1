@@ -33,7 +33,7 @@ export function controllerInput(pad, previous = [], aim = { x: 1, y: 0 }, should
 }
 
 // A pause or device reassignment requires held buttons to be released before
-// they can trigger gameplay again. Button history belongs to each physical pad.
+// they can trigger gameplay again. History uses the reported controller index and ID.
 export class ControllerState {
   constructor() { this.previous = new Map(); this.blocked = new Map(); }
   key(pad) { return pad.index + ':' + pad.id; }

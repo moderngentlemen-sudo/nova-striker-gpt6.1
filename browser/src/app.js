@@ -164,7 +164,7 @@ function applyParty(restart = false) {
   }
   inputs.clear(); $('party-dialog').close(); syncInput();
   if (running()) canvas.focus();
-  toast(fresh ? 'Squad deployed. A new room attempt has started.' : 'Squad updated. Resume when everyone is ready.');
+  toast(fresh ? 'Squad deployed. A new room attempt has started.' : world.won || world.defeated ? 'Squad updated. Restart to begin the next attempt.' : 'Squad updated. Resume when everyone is ready.');
 }
 $('apply-party').addEventListener('click', () => applyParty());
 $('restart-party').addEventListener('click', () => applyParty(true));

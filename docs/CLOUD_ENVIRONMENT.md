@@ -4,7 +4,7 @@
 
 Jason authorized foregoing Codespaces for now and continuing development in this cloud conversation on 2026-09-30. This supersedes the earlier Codespace-only execution requirement. GitHub Actions remains the test/build and Pages deployment path. Keep the existing Codespace rather than creating another one.
 
-The conversation's execution environment is remote Linux, with Node v24.19.0. Repository source was retrieved through the connected GitHub tools at commit `4c6b341e4ed8fda25a7e8fa1e3b5a63940607dc3`, and all 22 tracked files were verified against their Git blob hashes before changes. The original 22 gameplay tests and standalone build passed here. The session-recovery pass adds 16 regression tests; all 38 tests and the standalone build pass in this cloud workspace.
+The conversation's execution environment is remote Linux, with Node v24.19.0. Repository source was retrieved through the connected GitHub tools at commit `4c6b341e4ed8fda25a7e8fa1e3b5a63940607dc3`, and all 22 tracked files were verified against their Git blob hashes before changes. The original 22 gameplay tests and standalone build passed here. The session-recovery pass adds 17 regression tests; all 39 tests and the standalone build pass in this cloud workspace.
 
 Direct Git transport was unavailable through this shell's network route. Repository reads and atomic commits use the GitHub connection, preserving the upstream parent tree. The game's existing server can run on cloud loopback, but this conversation's browser blocked navigation to that loopback address. Use GitHub Actions and the deployed Pages build for the shared browser check; do not describe a successful server start as a browser playtest.
 
