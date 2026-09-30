@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1923">
+  <title>Nova Striker — Browser Lab</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Nova Striker browser lab"><span class="brandmark">N</span><span>NOVA <b>STRIKER</b><small>CONTROL & COOPERATION LAB</small></span></a>
+    <div class="build"><i></i> BROWSER PLAYTEST <span>01</span></div>
+    <nav aria-label="Playtest controls">
+      <button id="party-button">Co-op setup <span>↗</span></button>
+      <button id="help-button" aria-label="Open controls and settings">Controls <span>?</span></button>
+      <button id="pause-button" aria-label="Pause game">Pause <span>Ⅱ</span></button>
+    </nav>
+  </header>
+  <main>
+    <div class="missionbar">
+      <div><span class="eyebrow">SIMULATION / <span id="room-number">01</span></span><h1 id="room-title">Skyport</h1></div>
+      <div class="objective"><span class="objective-dot"></span><div><small>OBJECTIVE</small><strong id="objective">Clear the threats. Restore the relay.</strong></div></div>
+      <div class="room-tabs" role="group" aria-label="Test rooms">
+        <button data-room="skyport" class="active">Skyport</button><button data-room="movement">Movement</button><button data-room="combat">Combat</button><button data-room="ascent">Ascent</button>
+      </div>
+    </div>
+    <section class="stage" aria-label="Playable game">
+      <canvas id="game" tabindex="0" aria-label="Nova Striker game arena. Controls are available in the Controls button."></canvas>
+      <div id="player-hud" class="player-hud"></div>
+      <div class="arena-tag"><span>SKYPORT TRAINING NETWORK</span><span id="threat-count">6 SIGNALS</span></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <div id="telemetry" hidden></div>
+      <div id="welcome" class="overlay">
+        <div class="deployment">
+          <span class="eyebrow">FIELD SIMULATION 01</span>
+          <h2>Find your opening.</h2>
+          <p>Control the distance. Commit to the moment.<br>Choose your approach to the Skyport lab.</p>
+          <div class="character-picks" role="group" aria-label="Choose character">
+            <button class="character-pick selected" data-kit="nova"><span class="portrait nova">N</span><strong>Nova</strong><small>SENTINEL · RANGED</small></button>
+            <button class="character-pick" data-kit="echo"><span class="portrait echo">E</span><strong>Echo</strong><small>PURSUIT · CLOSE COMBAT</small></button>
+          </div>
+          <button class="primary" id="deploy-button">Deploy Nova <span>→</span></button>
+          <div class="deployment-note"><span>SOLO OR LOCAL CO-OP</span><span>KEYBOARD + CONTROLLER</span></div>
+        </div>
+      </div>
+      <div id="pause-overlay" class="overlay" hidden>
+        <div class="compact-panel"><span class="eyebrow">SIMULATION HELD</span><h2 id="pause-title">Take a breath.</h2><p id="pause-message">Your current encounter is paused.</p><button class="primary" id="resume-button">Resume <span>→</span></button><button id="retry-button" class="secondary">Retry checkpoint</button><button id="switch-button" class="secondary">Switch Nova / Echo</button></div>
+      </div>
+      <div id="result-overlay" class="overlay" hidden>
+        <div class="compact-panel"><span class="eyebrow">FIELD REPORT</span><h2 id="result-title">Transit restored.</h2><p id="result-description"></p><div id="result-stats" class="result-stats"></div><button class="primary" id="replay-button">Run it again <span>↻</span></button><button id="result-switch" class="secondary">Try the other approach</button></div>
+      </div>
+    </section>
+    <footer>
+      <div class="quick-controls"><span><kbd>W A S D</kbd> move</span><span><kbd>SPACE</kbd> jump ×2</span><span><kbd>SHIFT</kbd> dash / brake</span><span><kbd>LMB</kbd> fire / hold charge</span><span><kbd>RMB</kbd> melee</span><span><kbd>Q</kbd> parry</span><span><kbd>E</kbd> suit</span><span><kbd>F</kbd> interact / revive</span></div>
+      <div class="footer-status"><span><i></i> LOCAL SESSION <b id="party-count">1 PLAYER</b></span><span id="fps">— FPS</span><button id="telemetry-button">Telemetry</button><button id="export-button">Export report ↗</button><span class="prototype-note">TEMPORARY ART · EXPERIMENTAL RULES</span></div>
+    </footer>
+  </main>
+  <dialog id="party-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">SHARED SCREEN</span><h2>Build your squad.</h2></div><button data-close aria-label="Close co-op setup">×</button></div>
+    <p>Up to four local players. Press a button on connected controllers before assigning them. Simulated allies only test framing.</p>
+    <div id="party-slots"></div>
+    <div class="party-actions"><button id="stress-button" class="secondary">Add 3 simulated allies</button><button id="solo-button" class="secondary">Solo</button></div>
+    <p class="dialog-note" id="device-note">Keyboard 1 uses WASD + mouse. Keyboard 2 uses IJKL and U/O/P/H/Y/N. Physical controller testing remains separate.</p>
+    <button class="primary" id="apply-party">Apply and restart room <span>→</span></button>
+    <div id="party-error" role="alert"></div>
+  </dialog>
+  <dialog id="help-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">FIELD MANUAL</span><h2>Make your move.</h2></div><button data-close aria-label="Close controls">×</button></div>
+    <div class="control-columns">
+      <div><h3>Keyboard 1</h3><dl><dt>Move / crouch</dt><dd>WASD / S</dd><dt>Jump / double jump</dt><dd>Space</dd><dt>Dash / Velocity Break</dt><dd>Shift / press again</dd><dt>Aim</dt><dd>Mouse</dd><dt>Fire / charged shot</dt><dd>LMB / hold & release</dd><dt>Melee chain</dt><dd>RMB / repeated clicks</dd><dt>Parry / suit action</dt><dd>Q / E</dd><dt>Interact / revive</dt><dd>Hold F</dd><dt>Pause / retry</dt><dd>Esc / R</dd></dl></div>
+      <div><h3>Standard controller</h3><dl><dt>Move / aim</dt><dd>Left / right stick</dd><dt>Jump / dash</dt><dd>A / B</dd><dt>Fire / melee</dt><dd>RT / RB</dd><dt>Parry / suit</dt><dd>LB / Y</dd><dt>Interact / revive</dt><dd>Hold X</dd><dt>Crouch / pause</dt><dd>Stick down / Start</dd></dl><h3>Keyboard 2</h3><p class="small-copy">IJKL move · U jump · O dash · P fire · H melee · Y parry · N suit · M interact. Aim follows movement; up/down provides angled fire.</p></div>
+    </div>
+    <p class="threat-guide"><span class="parry-cue">◇</span> Gold diamond: parryable. <span class="danger-cue">×</span> Coral cross: unblockable. Move clear. White shield: front armor.</p>
+    <div class="settings"><label><input type="checkbox" id="sound-toggle"> Sound</label><label><input type="checkbox" id="effects-toggle" checked> Impact effects</label><label><input type="checkbox" id="assist-toggle"> Aim assistance</label><label><input type="checkbox" id="shoulder-toggle"> Shoulder jump preset</label></div>
+    <p class="dialog-note">Shoulder preset: LT jump, LB dash, A parry. Fire and melee remain RT/RB. This lets both thumbs stay on the sticks during movement and attacks.</p>
+    <p class="dialog-note">Wall slide by moving into a wall; jump away to wall jump. Hold down to cling slowly or slide on the ground. Tether needs a nearby exposed target. Bulwark Pulse clears ordinary shots in front of Nova. No campaign ranks are assigned in this simulation.</p>
+  </dialog>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

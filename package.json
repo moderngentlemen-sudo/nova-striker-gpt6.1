@@ -1,0 +1,12 @@
+{
+  "name": "nova-striker-browser-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated browser playtest for Nova Striker",
+  "scripts": {
+    "start": "node server.mjs",
+    "build": "node scripts/build-standalone.mjs",
+    "test": "node --test"
+  }
+}
