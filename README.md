@@ -14,7 +14,7 @@ Four selectable rooms cover movement, combat, vertical traversal, and the Skypor
 
 The user selected **GitHub Codespaces + GitHub Actions** on 2026-09-30. The earlier local draft was transferred into this repository; further implementation belongs in the cloud workspace. Do not continue developing this game in a local checkout unless the user changes that direction.
 
-[Open a Codespace for this repository](https://codespaces.new/moderngentlemen-sudo/nova-striker-gpt6.1). The checked-in devcontainer supplies Node 24 and forwards port 4173. In its terminal:
+[Open the existing cloud workspace](https://bookish-train-wvvwgvqgwpv63vg6g.github.dev/). See [verified cloud setup](docs/CLOUD_ENVIRONMENT.md). The checked-in devcontainer supplies Node 24 and forwards port 4173. In its terminal:
 
 ```sh
 node server.mjs

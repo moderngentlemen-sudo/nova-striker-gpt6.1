@@ -30,8 +30,8 @@ These make the charter concrete without claiming the user has decided them.
 | Solo character structure | One selected character with checkpoint changes. | Before campaign systems expand. |
 | Online release requirement | Local first; decide online feasibility separately before full production if online is required at launch. | Before committing production architecture and schedule. |
 | Team capacity and budget | Establish available people, weekly time, specialist access, and a budget ceiling. | Before estimating delivery dates or commissioning final assets. |
-| Velocity Break behavior | Test deliberate dash braking, with no extra invulnerability or refunded air charge. | Before implementing that mechanic. |
-| Bulwark Pulse and Echo suit behavior | Compare the charter's concrete candidates against the retained identities. | Before implementing their signature actions. |
+| Velocity Break behavior | Test deliberate dash braking, with no extra invulnerability or refunded air charge. | Before retaining the tested candidate after playtesting. |
+| Bulwark Pulse and Echo suit behavior | Compare the charter's concrete candidates against the retained identities. | Before retaining the tested signature-action candidates. |
 | Nova and Echo placements | Compare together-team and separate-team arc outlines; leave ranks open. | Before locking the Academy and graduation script. |
 | Wider conflict and technology limits | Explore preservation versus agency, with bounded memory and spatial technology. | Before writing the campaign outline. |
 | Suit and Guardian progression | Keep suit identity stable; let Guardian powers add shared interactions. | Before producing the full progression system. |
@@ -44,7 +44,7 @@ Temporary test values and asset substitutions should be labeled. They should not
 
 ## Current evidence
 
-The repository was reachable and empty when inspected on 2026-09-30. This initialization contains planning documents and a source snapshot. No Unity compilation, runtime behavior, human playtest, or target-hardware result has been recorded. Future evidence belongs in a dated report identifying the tested commit and build.
+The repository was reachable and empty when inspected on 2026-09-30. The initial commit contained planning documents and a source snapshot. Browser implementation, cloud test/build results, and a running Codespace are now recorded in BROWSER_PLAYTEST.md and CLOUD_ENVIRONMENT.md. Unity compilation, physical-controller playtesting, and target-hardware measurements remain unverified.
 
 ## Browser and cloud direction — 2026-09-30
 
