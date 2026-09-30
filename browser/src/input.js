@@ -1,5 +1,25 @@
 import { neutral, normalize, clamp } from './world.js';
 
+const buttonDown = button => (button?.value || (button?.pressed ? 1 : 0)) > .35;
+const availablePad = (pads, device) => pads.find(pad => 'pad' + pad.index === device && pad.connected !== false && pad.mapping === 'standard');
+
+export function bindControllers(party, pads) {
+  const identities = new Map();
+  for (const p of party.filter(p => p.device.startsWith('pad'))) {
+    const pad = availablePad(pads, p.device);
+    if (!pad) throw new RangeError('Reconnect the controller assigned to P' + (p.slot + 1) + ', or choose another device.');
+    identities.set(p.device, pad.id);
+  }
+  return identities;
+}
+
+export function missingControllers(party, pads, identities) {
+  return party.filter(p => p.device.startsWith('pad')).flatMap(p => {
+    const pad = availablePad(pads, p.device);
+    return !pad ? [{ slot: p.slot, reason: 'disconnected' }] : identities.has(p.device) && identities.get(p.device) !== pad.id ? [{ slot: p.slot, reason: 'replaced' }] : [];
+  });
+}
+
 export function controllerInput(pad, previous = [], aim = { x: 1, y: 0 }, shoulderPreset = false) {
   const value = i => pad.buttons[i]?.value || (pad.buttons[i]?.pressed ? 1 : 0);
   const down = i => value(i) > .35;
@@ -12,10 +32,31 @@ export function controllerInput(pad, previous = [], aim = { x: 1, y: 0 }, should
     buttons: pad.buttons.map((_, i) => down(i)), pause: edge(9) };
 }
 
+// A pause or device reassignment requires held buttons to be released before
+// they can trigger gameplay again. Button history belongs to each physical pad.
+export class ControllerState {
+  constructor() { this.previous = new Map(); this.blocked = new Map(); }
+  key(pad) { return pad.index + ':' + pad.id; }
+  clear(pads = []) {
+    this.previous.clear(); this.blocked.clear();
+    for (const pad of pads) this.blocked.set(this.key(pad), new Set(pad.buttons.flatMap((button, i) => buttonDown(button) ? [i] : [])));
+  }
+  sample(pad, aim, shoulderPreset = false) {
+    const key = this.key(pad), blocked = this.blocked.get(key) || new Set();
+    const buttons = pad.buttons.map((button, i) => {
+      if (!buttonDown(button)) blocked.delete(i);
+      return blocked.has(i) ? { pressed: false, value: 0 } : button;
+    });
+    const sample = controllerInput({ axes: pad.axes, buttons }, this.previous.get(key), aim, shoulderPreset);
+    this.previous.set(key, sample.buttons);
+    return sample;
+  }
+}
+
 export class Inputs {
   constructor(canvas, renderer) {
     this.canvas = canvas; this.renderer = renderer; this.held = new Set(); this.edges = new Set(); this.mouse = { x: 0, y: 0, active: false, fire: false, tap: false, melee: false };
-    this.enabled = false; this.padPrevious = new Map(); this.systemPrevious = new Map(); this.shoulderPreset = false; this.lastAction = 'Waiting for input'; this.onPause = () => {}; this.onRetry = () => {};
+    this.enabled = false; this.controllers = new ControllerState(); this.systemPrevious = new Map(); this.shoulderPreset = false; this.lastAction = 'Waiting for input'; this.onPause = () => {}; this.onRetry = () => {};
     window.addEventListener('keydown', event => {
       this.lastAction = (event.code || 'NO CODE') + ' / ' + event.key;
       if (event.repeat) return;
@@ -41,13 +82,17 @@ export class Inputs {
     canvas.addEventListener('contextmenu', event => event.preventDefault());
     window.addEventListener('blur', () => this.clear());
   }
-  clear() { this.held.clear(); this.edges.clear(); this.mouse.fire = false; this.mouse.tap = false; this.mouse.melee = false; this.padPrevious.clear(); }
+  clear() { this.held.clear(); this.edges.clear(); this.mouse.fire = false; this.mouse.tap = false; this.mouse.melee = false; this.controllers.clear(this.pads()); }
   endStep() { this.edges.clear(); this.mouse.tap = false; this.mouse.melee = false; }
-  pads() { try { return Array.from(navigator.getGamepads?.() || []).filter(Boolean); } catch { return []; } }
-  pollSystemButtons(party) {
-    for (const pad of this.pads()) {
+  pads() { try { return Array.from(navigator.getGamepads?.() || []).filter(pad => pad && pad.connected !== false); } catch { return []; } }
+  pollSystemButtons(party, identities = new Map(), allowPause = true) {
+    const pads = this.pads();
+    for (const index of this.systemPrevious.keys()) if (!pads.some(pad => pad.index === index)) this.systemPrevious.delete(index);
+    for (const pad of pads) {
       const pressed = Boolean(pad.buttons[9]?.pressed);
-      if (party.some(p => p.device === 'pad' + pad.index) && pressed && !this.systemPrevious.get(pad.index)) this.onPause();
+      const device = 'pad' + pad.index;
+      const assigned = pad.mapping === 'standard' && party.some(p => p.device === device) && (!identities.has(device) || identities.get(device) === pad.id);
+      if (allowPause && assigned && pressed && !this.systemPrevious.get(pad.index)) this.onPause();
       this.systemPrevious.set(pad.index, pressed);
     }
   }
@@ -62,9 +107,8 @@ export class Inputs {
     if (p.device === 'simulated') return this.simulated(p, world);
     if (p.device.startsWith('pad')) {
       const index = Number(p.device.slice(3)), pad = this.pads().find(pad => pad.index === index);
-      if (!pad) return neutral();
-      const sample = controllerInput(pad, this.padPrevious.get(index), { x: p.aimX, y: p.aimY }, this.shoulderPreset);
-      this.padPrevious.set(index, sample.buttons);
+      if (!pad || pad.mapping !== 'standard') return neutral();
+      const sample = this.controllers.sample(pad, { x: p.aimX, y: p.aimY }, this.shoulderPreset);
       if (assistance) {
         const aim = this.assist(p, world, { x: sample.input.aimX, y: sample.input.aimY }); sample.input.aimX = aim.x; sample.input.aimY = aim.y;
       }

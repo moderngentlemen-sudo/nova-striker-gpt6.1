@@ -167,7 +167,7 @@ export class Renderer {
       polygon(ctx, [[p.x - 3, p.y - p.h - 14], [p.x + 3, p.y - p.h - 14], [p.x, p.y - p.h - 10]], kit.color);
       if (p.device === 'simulated') { ctx.font = '7px sans-serif'; ctx.fillText('SIM', p.x, p.y - p.h - 30); }
     }
-    if (p.id === 0 && !p.downed) {
+    if (p.device === 'keyboard1' && !p.downed) {
       const x = p.x + p.aimX * 120, y = p.y - 34 + p.aimY * 120;
       ctx.globalAlpha = .5; circle(ctx, x, y, 2, kit.color); line(ctx, x - 7, y, x - 3, y, kit.color); line(ctx, x + 3, y, x + 7, y, kit.color); ctx.globalAlpha = 1;
     }

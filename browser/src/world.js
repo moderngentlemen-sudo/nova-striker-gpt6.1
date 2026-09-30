@@ -15,9 +15,15 @@ export const normalize = (x, y) => {
 };
 export const box = p => ({ x: p.x - p.w / 2, y: p.y - p.h, w: p.w, h: p.h });
 export const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-const freshStats = () => ({ shots: 0, hits: 0, parries: 0, perfectParries: 0, syncs: 0, recoveries: 0, falls: 0, revives: 0, defeats: 0 });
+const freshStats = () => ({ shots: 0, hits: 0, parries: 0, perfectParries: 0, syncs: 0, recoveries: 0, falls: 0, revives: 0, defeats: 0, joins: 0, departures: 0, deviceChanges: 0 });
 function validParty(party) {
-  if (!Array.isArray(party) || party.length < 1 || party.length > 4 || party.some(p => !KITS[p.kit])) throw new RangeError('Choose one to four valid characters.');
+  if (!Array.isArray(party) || party.length < 1 || party.length > 4 || party.some(p => !p || !Object.hasOwn(KITS, p.kit))) throw new RangeError('Choose one to four valid characters.');
+  const normalized = party.map((p, i) => ({ slot: p.slot ?? i, kit: p.kit, device: p.device }));
+  if (normalized.some(p => !Number.isInteger(p.slot) || p.slot < 0 || p.slot > 3) || new Set(normalized.map(p => p.slot)).size !== normalized.length) throw new RangeError('Choose different player slots from P1 to P4.');
+  if (normalized.some(p => !/^(keyboard[12]|simulated|pad\d+)$/.test(p.device))) throw new RangeError('Choose a supported input device for each player.');
+  const devices = normalized.filter(p => p.device !== 'simulated').map(p => p.device);
+  if (new Set(devices).size !== devices.length) throw new RangeError('Each real player needs a different device.');
+  return normalized.sort((a, b) => a.slot - b.slot);
 }
 export function segmentHitsRect(ax, ay, bx, by, r) {
   let low = 0, high = 1;
@@ -74,22 +80,79 @@ export function makePlayer(id, kit, device, spawn) {
 
 export class World {
   constructor(room = 'skyport', party = [{ kit: 'nova', device: 'keyboard1' }]) {
-    validParty(party);
     this.events = []; this.time = 0; this.stats = freshStats();
-    this.party = party.map(p => ({ ...p })); this.reset(room);
+    this.party = validParty(party); this.reset(room);
   }
   reset(room = this.level.room, checkpoint = false) {
     const previous = checkpoint ? { ...this.level.checkpoint } : null;
     const snapshot = checkpoint ? this.checkpointSnapshot : null;
-    if (!checkpoint) { this.time = 0; this.stats = freshStats(); }
+    if (!checkpoint) { this.time = 0; this.stats = freshStats(); this.partyChanges = []; }
     this.level = makeLevel(room, this.party.length);
     if (previous) this.level.checkpoint = previous;
     if (snapshot) this.level.enemies = snapshot.map(e => ({ ...e }));
-    this.players = this.party.map((p, i) => makePlayer(i, p.kit, p.device, this.level.checkpoint));
+    this.players = this.party.map(p => makePlayer(p.slot, p.kit, p.device, this.level.checkpoint));
+    this.benchPlayers = new Map();
     this.bullets = []; this.effects = []; this.repair = 0; this.won = false; this.defeated = false; this.defeatTimer = 0; this.checkpointReached = Boolean(previous && snapshot); this.checkpointSnapshot = snapshot; this.events = [];
     this.initialEnemies = this.level.enemies.length;
   }
-  setParty(party) { validParty(party); this.party = party.map(p => ({ ...p })); this.reset(); }
+  setParty(party) { this.party = validParty(party); this.reset(); }
+  partySpawn(player, anchors) {
+    for (const anchor of anchors.filter(p => p.grounded && !p.downed)) {
+      const floor = this.level.platforms.find(r => anchor.x >= r.x && anchor.x <= r.x + r.w && Math.abs(anchor.y - r.y) < 2);
+      if (!floor) continue;
+      for (const offset of [-48, 48, -96, 96, 0, -144, 144]) {
+        const position = { x: anchor.x + offset, y: floor.y };
+        const body = { x: position.x - player.w / 2, y: position.y - 60, w: player.w, h: 60 };
+        if (body.x < floor.x || body.x + body.w > floor.x + floor.w || this.level.platforms.some(r => overlap(body, r))) continue;
+        if (!this.visible(anchor.x, anchor.y - 30, position.x, position.y - 30)) continue;
+        if (!this.checkpointReached && this.level.room !== 'ascent' && anchor.x <= 1710 && position.x > 1710) continue;
+        if (this.level.objective === 'reach' && distance(position, this.level.exit) < 85 && distance(anchor, this.level.exit) >= 85) continue;
+        if (this.level.enemies.some(e => e.alive && overlap(body, { x: e.x - e.w / 2 - 110, y: e.y - e.h - 80, w: e.w + 220, h: e.h + 160 }))) continue;
+        if (this.bullets.some(b => b.owner === null && distance(b, { x: position.x, y: position.y - 30 }) < 140)) continue;
+        return position;
+      }
+    }
+    throw new RangeError('Land on a clear platform, away from enemies and incoming shots, before adding a player.');
+  }
+  updateParty(party) {
+    const next = validParty(party);
+    const survivors = this.players.filter(p => next.some(spec => spec.slot === p.id));
+    // Prepare every change before mutating the live encounter, so a rejected join is atomic.
+    const prepared = next.map(spec => {
+      const current = this.players.find(p => p.id === spec.slot);
+      const previous = current || this.benchPlayers.get(spec.slot);
+      if (previous && previous.kit !== spec.kit) throw new RangeError('P' + (spec.slot + 1) + ' keeps their character for this attempt. Use Restart with this squad to change it.');
+      if (!current && (this.won || this.defeated)) throw new RangeError('This attempt has ended. Use Restart with this squad to add players.');
+      const player = previous || makePlayer(spec.slot, spec.kit, spec.device, this.level.checkpoint);
+      return { spec, player, current, position: current ? null : this.partySpawn(player, survivors) };
+    });
+    const departed = this.players.filter(p => !next.some(spec => spec.slot === p.id));
+    const changes = [];
+    for (const p of departed) {
+      this.benchPlayers.set(p.id, p);
+      changes.push({ type: 'leave', slot: p.id, kit: p.kit, device: p.device });
+    }
+    for (const { spec, player, current, position } of prepared) {
+      if (!current) {
+        Object.assign(player, position, { vx: 0, vy: 0, h: 60, grounded: true, wall: 0, spread: 0, dashTime: 0, slide: 0, attack: null, pendingSkill: null, skillWindup: 0, fireHeld: false, charge: 0, jumpBuffer: 0, meleeBuffer: 0 });
+        changes.push({ type: 'join', slot: spec.slot, kit: spec.kit, device: spec.device, returning: this.benchPlayers.has(spec.slot) });
+      } else if (player.device !== spec.device) changes.push({ type: 'device', slot: spec.slot, kit: spec.kit, from: player.device, device: spec.device });
+      player.device = spec.device;
+      this.benchPlayers.delete(spec.slot);
+    }
+    this.party = next;
+    this.players = prepared.map(item => item.player);
+    const active = new Set(this.players.map(p => p.id));
+    this.bullets = this.bullets.filter(b => b.owner === null || active.has(b.owner));
+    for (const e of this.level.enemies) if (e.lastPlayer !== null && !active.has(e.lastPlayer)) e.lastPlayer = null;
+    if (this.players.some(p => !p.downed)) this.defeatTimer = 0;
+    this.stats.joins += changes.filter(c => c.type === 'join').length;
+    this.stats.departures += departed.length;
+    this.stats.deviceChanges += changes.filter(c => c.type === 'device').length;
+    this.partyChanges.push(...changes.map(change => ({ seconds: Number(this.time.toFixed(2)), ...change })));
+    this.partyChanges = this.partyChanges.slice(-100);
+    return changes;
+  }
   event(type, x, y, text = '', color = '#a4efff') {
     this.events.push({ type, x, y, text, color });
     this.effects.push({ type, x, y, text, color, life: type === 'text' ? 1.05 : .38, maxLife: type === 'text' ? 1.05 : .38 });
@@ -363,6 +426,7 @@ export class World {
         }
       } else {
         const p = this.players.find(player => player.id === b.owner);
+        if (!p) { b.life = 0; continue; }
         for (const e of this.level.enemies) if (e.alive && !(b.hit || []).includes(e) && segmentHitsRect(oldX, oldY, b.x, b.y, box(e))) {
           b.hit.push(e); this.hitEnemy(e, b.damage, p, Math.sign(b.vx) * 5, .12);
           if (b.pierce > 0) b.pierce--; else { b.life = 0; break; }
@@ -372,7 +436,7 @@ export class World {
     this.bullets = this.bullets.filter(b => b.life > 0);
   }
   step(dt, inputs = []) {
-    if (this.won) return;
+    if (this.won || this.defeated) return;
     this.time += dt; this.events = [];
     for (let i = 0; i < this.players.length; i++) this.stepPlayer(this.players[i], inputs[i] || neutral(), dt);
     for (const e of this.level.enemies) this.stepEnemy(e, dt);
@@ -388,7 +452,7 @@ export class World {
     if (this.players.every(p => p.downed)) {
       this.defeatTimer += dt;
       if (this.defeatTimer > .8 && !this.defeated) { this.defeated = true; this.stats.defeats++; }
-    }
+    } else this.defeatTimer = 0;
     const enemiesLeft = this.level.enemies.filter(e => e.alive).length;
     if (this.level.objective === 'repair') {
       const repairer = this.players.find((p, i) => !p.downed && inputs[i]?.interact && distance(p, this.level.console) < 105 && p.invulnerable <= 0);

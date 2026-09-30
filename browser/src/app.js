@@ -1,12 +1,13 @@
 import { World, KITS, STEP, ROOMS, clamp } from './world.js';
 import { Renderer } from './render.js';
-import { Inputs } from './input.js';
+import { Inputs, bindControllers, missingControllers } from './input.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game'), renderer = new Renderer(canvas), inputs = new Inputs(canvas, renderer);
 let selected = 'nova', world = new World(), paused = true, started = false, accumulator = 0, lastTime = performance.now(), hudTime = 0;
 let toastTime = 0, audio = null, sound = false, assistance = false, disconnected = false;
-const frames = [], controllerIds = new Map();
+const frames = [];
+let controllerIds = new Map();
 const metrics = { frameCount: 0, frameTimes: [], longFrames: 0 };
 
 function toast(text) { $('toast').textContent = text; $('toast').style.opacity = '1'; toastTime = 2.5; }
@@ -20,7 +21,14 @@ function soundEvent(type) {
   oscillator.connect(gain).connect(audio.destination); oscillator.start(); oscillator.stop(audio.currentTime + duration);
 }
 function running() { return started && !paused && !disconnected && !world.won && !world.defeated && !document.querySelector('dialog[open]'); }
-function syncInput() { inputs.enabled = running(); if (!inputs.enabled) inputs.clear(); accumulator = 0; }
+function syncInput() {
+  const enabled = running();
+  if (!enabled || enabled !== inputs.enabled) {
+    inputs.clear();
+    for (const p of world.players) { p.fireHeld = false; p.charge = 0; p.jumpBuffer = 0; p.meleeBuffer = 0; }
+  }
+  inputs.enabled = enabled; accumulator = 0;
+}
 function hideResults() { $('result-overlay').hidden = true; }
 function updateRoom() {
   document.querySelectorAll('[data-room]').forEach(button => button.classList.toggle('active', button.dataset.room === world.level.room));
@@ -42,7 +50,7 @@ function reset(checkpoint = false, other = false) {
     const first = world.party.find(p => p.device !== 'simulated') || world.party[0];
     first.kit = first.kit === 'nova' ? 'echo' : 'nova'; selected = first.kit;
   }
-  world.reset(world.level.room, checkpoint); renderer.camera = null;
+  world.reset(world.level.room, checkpoint); renderer.camera = null; inputs.clear();
   hideResults(); $('pause-overlay').hidden = true; paused = false; started = true;
   $('pause-button').innerHTML = 'Pause <span>Ⅱ</span>'; updateRoom(); syncInput(); canvas.focus();
   $('pause-button').setAttribute('aria-label', 'Pause game');
@@ -95,15 +103,17 @@ function buildParty(party = world.party) {
   const pads = inputs.pads().filter(pad => pad.mapping === 'standard');
   $('party-slots').replaceChildren();
   for (let i = 0; i < 4; i++) {
+    const entry = party.find((p, index) => (p.slot ?? index) === i);
+    const reserved = world.players.find(p => p.id === i) || world.benchPlayers.get(i);
     const row = document.createElement('div'); row.className = 'party-slot';
     const label = document.createElement('label'); label.textContent = 'P' + (i + 1); label.htmlFor = 'device-' + i;
     const kit = document.createElement('select'); kit.id = 'kit-' + i; kit.setAttribute('aria-label', 'Player ' + (i + 1) + ' character');
     for (const [value, definition] of Object.entries(KITS)) { const option = document.createElement('option'); option.value = value; option.textContent = definition.name; kit.append(option); }
-    kit.value = party[i]?.kit || Object.keys(KITS)[i];
+    kit.value = entry?.kit || reserved?.kit || Object.keys(KITS)[i];
     const device = document.createElement('select'); device.id = 'device-' + i; device.setAttribute('aria-label', 'Player ' + (i + 1) + ' device');
     const choices = [['off','Not playing'],['keyboard1','Keyboard 1 + mouse'],['keyboard2','Keyboard 2'],['simulated','Simulated ally'], ...pads.map(pad => ['pad' + pad.index, 'Controller ' + (pad.index + 1)])];
     for (const [value, text] of choices) { const option = document.createElement('option'); option.value = value; option.textContent = text; device.append(option); }
-    const existing = party[i]?.device || 'off';
+    const existing = entry?.device || 'off';
     if (!choices.some(([value]) => value === existing)) {
       const option = document.createElement('option'); option.value = existing; option.textContent = 'Disconnected controller'; device.append(option);
     }
@@ -111,34 +121,59 @@ function buildParty(party = world.party) {
     row.append(label, kit, device); $('party-slots').append(row);
   }
   $('party-error').textContent = '';
-  $('device-note').textContent = pads.length ? pads.length + ' standard controller(s) detected. Keyboard 2 uses IJKL, U/O/P/H/Y/N/M.' : 'No standard controllers detected. Press a controller button, then reopen this panel. Keyboard 2 uses IJKL, U/O/P/H/Y/N/M.';
+  $('device-note').textContent = pads.length ? pads.length + ' standard controller(s) detected. Keyboard 2 uses IJKL, U/O/P/H/Y/N/M.' : 'No standard controllers detected. Press a controller button, then Refresh devices. Keyboard 2 uses IJKL, U/O/P/H/Y/N/M.';
+  $('apply-party').textContent = started ? 'Apply squad changes →' : 'Deploy squad →';
+  $('party-note').textContent = started ? 'Apply preserves this encounter. Keep each occupied slot’s character to retain health, cooldowns and downed state. Returning slots keep their state. Character changes require a room restart.' : 'Choose each player’s character and input device, then deploy together.';
 }
-$('party-button').addEventListener('click', () => { buildParty(); openDialog($('party-dialog')); });
-$('stress-button').addEventListener('click', () => buildParty([{ kit: world.players[0].kit, device: 'keyboard1' }, { kit: 'echo', device: 'simulated' }, { kit: 'tank', device: 'simulated' }, { kit: 'support', device: 'simulated' }]));
-$('solo-button').addEventListener('click', () => buildParty([{ kit: world.players[0].kit, device: 'keyboard1' }]));
-$('apply-party').addEventListener('click', () => {
-  const party = [];
-  for (let i = 0; i < 4; i++) if ($('device-' + i).value !== 'off') party.push({ kit: $('kit-' + i).value, device: $('device-' + i).value });
+function partyDraft() {
+  return Array.from({ length: 4 }, (_, slot) => ({ slot, kit: $('kit-' + slot).value, device: $('device-' + slot).value }));
+}
+function openParty() {
+  setPaused(true, 'Your encounter is held while you update the squad.');
+  buildParty(); openDialog($('party-dialog'));
+}
+$('party-button').addEventListener('click', openParty);
+$('pause-party-button').addEventListener('click', openParty);
+$('refresh-devices').addEventListener('click', () => buildParty(partyDraft()));
+for (const event of ['gamepadconnected', 'gamepaddisconnected']) window.addEventListener(event, () => {
+  if ($('party-dialog').open) buildParty(partyDraft());
+});
+$('stress-button').addEventListener('click', () => buildParty(partyDraft().map(p => p.device === 'off' ? { ...p, device: 'simulated' } : p)));
+$('solo-button').addEventListener('click', () => {
+  const first = partyDraft().find(p => p.device !== 'off' && p.device !== 'simulated') || world.party.find(p => p.device !== 'simulated');
+  buildParty(first ? [first] : [{ slot: 0, kit: selected, device: 'keyboard1' }]);
+});
+function applyParty(restart = false) {
+  const party = partyDraft().filter(p => p.device !== 'off');
   const actual = party.filter(p => p.device !== 'simulated').map(p => p.device);
   if (!actual.length) { $('party-error').textContent = 'Assign at least one keyboard or controller player.'; return; }
   if (new Set(actual).size !== actual.length) { $('party-error').textContent = 'Each real player needs a different device.'; return; }
-  controllerIds.clear();
-  for (const p of party.filter(p => p.device.startsWith('pad'))) {
-    const pad = inputs.pads().find(pad => 'pad' + pad.index === p.device);
-    if (!pad) { $('party-error').textContent = 'Reconnect the selected controller or choose another device.'; return; }
-    controllerIds.set(p.device, pad.id);
+  const fresh = restart || !started;
+  try {
+    const nextControllers = bindControllers(party, inputs.pads());
+    if (fresh) world.setParty(party); else world.updateParty(party);
+    controllerIds = nextControllers;
+  } catch (error) { $('party-error').textContent = error.message; return; }
+  disconnected = false; started = true; $('welcome').hidden = true;
+  if (fresh) {
+    paused = false; hideResults(); $('pause-overlay').hidden = true; updateRoom();
+    $('pause-button').innerHTML = 'Pause <span>Ⅱ</span>'; $('pause-button').setAttribute('aria-label', 'Pause game');
+  } else {
+    paused = true; updateHud();
+    setPaused(true, 'Squad updated. Your encounter progress is preserved. Release held buttons, then resume when everyone is ready.');
   }
-  world.setParty(party); $('party-dialog').close(); $('welcome').hidden = true; started = true; paused = false; disconnected = false;
-  hideResults(); $('pause-overlay').hidden = true; renderer.camera = null; updateRoom(); syncInput(); canvas.focus();
-  toast(party.some(p => p.device === 'simulated') ? 'Simulated allies enabled. This tests camera framing, not human coordination.' : 'Local party ready.');
-});
+  inputs.clear(); $('party-dialog').close(); syncInput();
+  if (running()) canvas.focus();
+  toast(fresh ? 'Squad deployed. A new room attempt has started.' : 'Squad updated. Resume when everyone is ready.');
+}
+$('apply-party').addEventListener('click', () => applyParty());
+$('restart-party').addEventListener('click', () => applyParty(true));
 function checkConnections() {
-  const missing = world.party.filter(p => p.device.startsWith('pad')).some(p => {
-    const pad = inputs.pads().find(pad => 'pad' + pad.index === p.device);
-    return !pad || (controllerIds.has(p.device) && controllerIds.get(p.device) !== pad.id);
-  });
-  if (missing && started && (!disconnected || !paused)) { disconnected = true; setPaused(true, 'Reconnect the assigned controller or change the device in Co-op setup.'); }
-  else if (!missing && disconnected) { disconnected = false; $('pause-title').textContent = 'Controller reconnected.'; $('pause-message').textContent = 'Resume when everyone is ready.'; }
+  const missing = missingControllers(world.party, inputs.pads(), controllerIds);
+  if (missing.length && started) {
+    const message = missing.map(p => 'P' + (p.slot + 1) + (p.reason === 'replaced' ? ' has a different controller' : ' controller disconnected')).join('; ') + '. Reconnect, reassign, or remove the affected player in Co-op setup. Your progress is preserved.';
+    if (!disconnected || !paused || $('pause-message').textContent !== message) { disconnected = true; setPaused(true, message); }
+  } else if (!missing.length && disconnected) { disconnected = false; inputs.clear(); $('pause-title').textContent = 'Controller reconnected.'; $('pause-message').textContent = 'Release held buttons, then resume when everyone is ready.'; }
 }
 
 function updateHud() {
@@ -154,7 +189,7 @@ function updateHud() {
     const card = hud.children[i], kit = KITS[p.kit];
     card.style.setProperty('--player-color', kit.color);
     card.querySelector('strong').textContent = kit.name;
-    card.querySelector('small').textContent = 'P' + (i + 1) + (p.device === 'simulated' ? ' · SIM' : '');
+    card.querySelector('small').textContent = 'P' + (p.id + 1) + (p.device === 'simulated' ? ' · SIM' : '');
     card.querySelector('.health i').style.width = clamp(p.hp / p.maxHp * 100, 0, 100) + '%';
     card.querySelector('.skill-status span').textContent = p.downed ? 'Awaiting revive' : kit.skill;
     card.querySelector('.skill-status b').textContent = p.downed ? 'DOWN' : p.skillCooldown > 0 ? p.skillCooldown.toFixed(1) + 's' : 'READY';
@@ -169,6 +204,7 @@ function updateHud() {
       'THREATS ' + threats + ' · SHOTS ' + world.stats.shots + ' · HITS ' + world.stats.hits,
       'PARRIES ' + world.stats.parries + ' · PERFECT ' + world.stats.perfectParries + ' · SYNC ' + world.stats.syncs,
       'FALLS ' + world.stats.falls + ' · REGROUPS ' + world.stats.recoveries + ' · REVIVES ' + world.stats.revives,
+      'SESSION JOINS ' + world.stats.joins + ' · DEPARTURES ' + world.stats.departures + ' · DEVICE CHANGES ' + world.stats.deviceChanges,
       'LAST INPUT ' + inputs.lastAction,
       ...world.players.map(p => 'P' + (p.id + 1) + ' ' + p.kit.toUpperCase() + ' · HP ' + Math.round(p.hp) + ' · X ' + Math.round(p.x) + ' Y ' + Math.round(p.y) + (p.grounded ? ' GROUNDED' : ' AIR'))];
     lines.forEach(text => { const line = document.createElement('div'); line.textContent = text; $('telemetry').append(line); });
@@ -184,8 +220,9 @@ function showResult() {
 $('export-button').addEventListener('click', () => {
   const sorted = [...metrics.frameTimes].sort((a, b) => a - b);
   const percentile = value => sorted.length ? Number(sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * value))].toFixed(2)) : null;
-  const report = { prototype: 'Nova Striker browser lab 0.1', createdAt: new Date().toISOString(), room: world.level.room, elapsedSeconds: Number(world.time.toFixed(2)),
-    party: world.party.map(p => ({ kit: p.kit, device: p.device })), simulatedPlayers: world.party.filter(p => p.device === 'simulated').length,
+  const report = { prototype: 'Nova Striker browser lab 0.2', createdAt: new Date().toISOString(), room: world.level.room, elapsedSeconds: Number(world.time.toFixed(2)),
+    party: world.party.map(p => ({ slot: p.slot, kit: p.kit, device: p.device })), simulatedPlayers: world.party.filter(p => p.device === 'simulated').length,
+    partyChanges: world.partyChanges, partyChangeScope: 'Last 100 changes in this room attempt, including checkpoint retries. Slots are zero-based. Enemy composition is fixed at room start; attack scheduling follows the active party.',
     results: { won: world.won, defeated: world.defeated, ...world.stats }, viewport: { width: Math.round(renderer.width), height: Math.round(renderer.height) },
     rendering: { scope: 'Active gameplay across this browser session, including earlier rooms', sampledFrames: sorted.length, medianMs: percentile(.5), p95Ms: percentile(.95), p99Ms: percentile(.99), longFrames: metrics.longFrames },
     limitations: ['Physical four-controller testing and human game-feel validation have not been established by this report.', 'Frame intervals include browser scheduling; these are not GPU or controller-to-photon measurements.'] };
@@ -199,7 +236,7 @@ renderer.resize(); updateRoom();
 function frame(timestamp) {
   const raw = (timestamp - lastTime) / 1000, dt = Math.min(.05, Math.max(0, raw)); lastTime = timestamp;
   frames.push(raw); if (frames.length > 60) frames.shift();
-  inputs.pollSystemButtons(world.party); checkConnections();
+  checkConnections(); inputs.pollSystemButtons(world.party, controllerIds, !disconnected && !document.querySelector('dialog[open]'));
   if (running()) {
     metrics.frameCount++;
     if (metrics.frameTimes.length < 72000) metrics.frameTimes.push(raw * 1000);

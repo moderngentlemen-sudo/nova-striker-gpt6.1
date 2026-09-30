@@ -48,6 +48,12 @@ The repository was reachable and empty when inspected on 2026-09-30. The initial
 
 ## Browser and cloud direction — 2026-09-30
 
-The user requested a browser version first for testing, then required the development environment itself to be in the cloud and selected GitHub Codespaces + GitHub Actions. The existing browser draft was transferred to GitHub. Further implementation must occur in the Codespace; cloud tests/builds and Pages publishing run through Actions.
+The user requested a browser version first for testing, then required the development environment itself to be in the cloud and selected GitHub Codespaces + GitHub Actions. The existing browser draft was transferred to GitHub. Later in the handoff conversation on the same date, Jason explicitly authorized foregoing Codespaces for now and continuing in the ChatGPT Work cloud workspace. Further implementation may run in that remote workspace; GitHub Actions remains the test/build and Pages publishing path. The existing Codespace is retained as an optional environment.
 
 The draft exercises the charter's candidate movement and partial combat kits using temporary Canvas art. It does not approve these values or substitute art as permanent canon. Browser test coverage and unresolved features are recorded in BROWSER_PLAYTEST.md. Unity implementation remains pending, and the full validation matrix is not complete.
+
+## Browser session recovery pass — 2026-09-30
+
+Live squad changes preserve the encounter and keep stable P1–P4 slots. Joins require a surviving grounded teammate and a clear position on the same platform. Departed slots retain their character and resources for the attempt; rejoining does not heal or revive them. A separate explicit room restart allows character changes. No join can rescue an already defeated party or complete a beacon/checkpoint by spawning ahead of the surviving player.
+
+Enemy composition stays fixed until the next room restart or fresh room selection; attack scheduling uses the active party size. Checkpoint retry preserves the saved enemies. This bounded prototype rule avoids rebuilding a live encounter when someone leaves and does not settle full-game difficulty scaling. Controller identity checks use the browser's reported index, mapping and ID; physical controller validation remains pending.

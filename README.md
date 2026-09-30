@@ -8,13 +8,15 @@ A browser-first playtest for this isolated fresh-start version of Nova Striker. 
 
 Choose Nova or Echo, then Deploy. WASD moves, Space jumps twice, Shift dashes and brakes, the mouse aims, left click fires (hold/release to charge), right click chains melee, Q parries, E uses the suit action, and F interacts or revives. Esc pauses; R retries the checkpoint. The Controls panel includes two controller presets.
 
-Four selectable rooms cover movement, combat, vertical traversal, and the Skyport repair encounter. Co-op setup supports up to four input owners using two keyboard layouts and standard controllers. Applying a party restarts the room. Simulated allies are marked SIM and only exercise framing; they do not establish human co-op quality.
+Four selectable rooms cover movement, combat, vertical traversal, and the Skyport repair encounter. Co-op setup supports up to four input owners using two keyboard layouts and standard controllers. Apply squad changes adds, removes, or reassigns players while preserving the encounter, checkpoint, health, cooldowns, and downed state. Player slots stay stable when someone leaves. New and returning players join beside a grounded teammate on a clear platform; returning slots retain their state. Resume explicitly after applying changes.
+
+Character changes use the separate Restart with this squad button, which starts a new room attempt. Enemy composition stays fixed during live squad changes; attack scheduling follows the current party size. Reconnect an assigned controller, or use Co-op setup to reassign or remove its player. Release held action buttons before resuming. Simulated allies are marked SIM and only exercise framing; they do not establish human co-op quality.
 
 ## Cloud development
 
-The user selected **GitHub Codespaces + GitHub Actions** on 2026-09-30. The earlier local draft was transferred into this repository; further implementation belongs in the cloud workspace. Do not continue developing this game in a local checkout unless the user changes that direction.
+The user requires cloud development and, on 2026-09-30, authorized continuing directly in this **ChatGPT Work cloud conversation**, foregoing Codespaces for now. GitHub Actions remains the validation and publishing path. The earlier local draft was transferred into this repository; further implementation belongs in an authorized remote cloud workspace.
 
-[Open the existing cloud workspace](https://bookish-train-wvvwgvqgwpv63vg6g.github.dev/). See [verified cloud setup](docs/CLOUD_ENVIRONMENT.md). The checked-in devcontainer supplies Node 24 and forwards port 4173. In its terminal:
+The [existing Codespace](https://bookish-train-wvvwgvqgwpv63vg6g.github.dev/) remains optional. See [cloud environment and current direction](docs/CLOUD_ENVIRONMENT.md). The checked-in devcontainer supplies Node 24 and forwards port 4173. In an authorized cloud terminal:
 
 ```sh
 node server.mjs
