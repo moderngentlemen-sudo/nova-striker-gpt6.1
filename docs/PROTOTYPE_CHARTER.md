@@ -2,7 +2,7 @@
 
 This charter defines the first playable experiment for the separate version of Nova Striker. Its purpose is to prove that movement, two different combat approaches, and one-to-four-player cooperation can support the same readable encounters before campaign or final-asset production expands.
 
-Status on 2026-09-30: planning complete for review; implementation and playtesting have not started. The behaviors and numerical values identified as candidates below are proposals, not previously approved specifications. The [decision register](DECISIONS.md) records the remaining choices.
+Status on 2026-09-30: a browser-first draft implements part of this lab for testing. The user selected GitHub Codespaces + GitHub Actions for further development. See [browser playtest coverage](BROWSER_PLAYTEST.md) for implemented scope and evidence. Unity implementation and the full human validation matrix remain pending. The behaviors and numerical values identified as candidates below are proposals, not previously approved specifications. The [decision register](DECISIONS.md) records the remaining choices.
 
 ## Player experience
 

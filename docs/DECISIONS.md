@@ -45,3 +45,9 @@ Temporary test values and asset substitutions should be labeled. They should not
 ## Current evidence
 
 The repository was reachable and empty when inspected on 2026-09-30. This initialization contains planning documents and a source snapshot. No Unity compilation, runtime behavior, human playtest, or target-hardware result has been recorded. Future evidence belongs in a dated report identifying the tested commit and build.
+
+## Browser and cloud direction — 2026-09-30
+
+The user requested a browser version first for testing, then required the development environment itself to be in the cloud and selected GitHub Codespaces + GitHub Actions. The existing browser draft was transferred to GitHub. Further implementation must occur in the Codespace; cloud tests/builds and Pages publishing run through Actions.
+
+The draft exercises the charter's candidate movement and partial combat kits using temporary Canvas art. It does not approve these values or substitute art as permanent canon. Browser test coverage and unresolved features are recorded in BROWSER_PLAYTEST.md. Unity implementation remains pending, and the full validation matrix is not complete.

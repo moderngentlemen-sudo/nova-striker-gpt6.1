@@ -1,21 +1,34 @@
 # Nova Striker
 
-Nova Striker is an original science-fiction action platformer about expressive movement, distinct combat identities, and cooperation among one to four players. This repository is the designated destination for a separate fresh-start version.
+A browser-first playtest for this isolated fresh-start version of Nova Striker. Nova emphasizes ranged protection; Echo emphasizes pursuit and melee. All character drawings and mechanics are temporary test implementations, with no campaign ranks assigned.
 
-The first milestone is the **Control and Cooperation Lab**: a bounded experiment to establish whether Nova's ranged protection, Echo's close-combat pursuit, and a shared camera work together. The repository currently contains its planning documents. Unity implementation and gameplay validation have not started.
+## Play
 
-Start with the [prototype charter](docs/PROTOTYPE_CHARTER.md), then use the [validation plan](docs/VALIDATION_PLAN.md) to judge a playable build.
+[Open the cloud browser lab](https://moderngentlemen-sudo.github.io/nova-striker-gpt6.1/). Deployment status is visible in [GitHub Actions](https://github.com/moderngentlemen-sudo/nova-striker-gpt6.1/actions).
 
-| Document | Purpose |
-| --- | --- |
-| [Prototype charter](docs/PROTOTYPE_CHARTER.md) | Defines the experiment, candidate rules, implementation passes, and scope limits. |
-| [World Codex foundations](docs/WORLD_CODEX_FOUNDATIONS.md) | Records the retained creative baseline and distinguishes proposals from established material. |
-| [Decision register](docs/DECISIONS.md) | Records user direction, provisional assumptions, and decisions that materially affect the game. |
-| [Validation plan](docs/VALIDATION_PLAN.md) | Defines evidence for responsiveness, character distinction, solo play, and four-player cooperation. |
-| [Original development brief](docs/source/development-brief.txt) | Preserves the supplied brief as a source snapshot. Read it alongside the subsequent direction in the decision register. |
+Choose Nova or Echo, then Deploy. WASD moves, Space jumps twice, Shift dashes and brakes, the mouse aims, left click fires (hold/release to charge), right click chains melee, Q parries, E uses the suit action, and F interacts or revives. Esc pauses; R retries the checkpoint. The Controls panel includes two controller presets.
 
-The brief is a flexible baseline. Meaningful creative departures should be presented with their benefit and tradeoff and checked with the user before adoption. Routine choices within an agreed direction can proceed without repeated approval.
+Four selectable rooms cover movement, combat, vertical traversal, and the Skyport repair encounter. Co-op setup supports up to four input owners using two keyboard layouts and standard controllers. Applying a party restarts the room. Simulated allies are marked SIM and only exercise framing; they do not establish human co-op quality.
 
-The existing Nova Striker project remains separate. No existing implementation or approved artwork has been imported into this repository. Unity and Blender remain the working pipeline; exact editor and package versions will be recorded when an actual project is created and checked.
+## Cloud development
 
-Planning documents are not evidence of a working feature. Reports should distinguish code written, static checks, Unity compilation, runtime tests, human playtesting, and hardware measurements.
+The user selected **GitHub Codespaces + GitHub Actions** on 2026-09-30. The earlier local draft was transferred into this repository; further implementation belongs in the cloud workspace. Do not continue developing this game in a local checkout unless the user changes that direction.
+
+[Open a Codespace for this repository](https://codespaces.new/moderngentlemen-sudo/nova-striker-gpt6.1). The checked-in devcontainer supplies Node 24 and forwards port 4173. In its terminal:
+
+```sh
+node server.mjs
+```
+
+Open the forwarded port to play the development build. Tests and a single-file build need no dependencies:
+
+```sh
+node --test
+node scripts/build-standalone.mjs
+```
+
+GitHub Actions runs gameplay tests and builds on every main push and pull request. Main builds publish only the browser assets to GitHub Pages after checks pass. No server, database, analytics service, or third-party game assets are required. Gameplay runs in the visiting browser; cloud hosting does not add online multiplayer.
+
+See [browser playtest coverage](docs/BROWSER_PLAYTEST.md), [prototype charter](docs/PROTOTYPE_CHARTER.md), [world foundations](docs/WORLD_CODEX_FOUNDATIONS.md), [decisions](docs/DECISIONS.md), [validation plan](docs/VALIDATION_PLAN.md), and the [original brief](docs/source/development-brief.txt).
+
+Unity and Blender remain the longer-term pipeline. This build does not establish Unity compilation, final character art, a completed campaign, online co-op, touch controls, or physical four-controller results. Meaningful creative departures still need a concrete benefit/tradeoff and a check with the user before adoption.

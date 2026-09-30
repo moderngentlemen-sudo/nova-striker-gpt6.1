@@ -1,0 +1,13 @@
+{
+  "name": "Nova Striker cloud development",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24-bookworm",
+  "remoteUser": "node",
+  "forwardPorts": [4173],
+  "portsAttributes": {
+    "4173": { "label": "Nova Striker browser lab", "onAutoForward": "openBrowser" }
+  },
+  "postCreateCommand": "node --test && node scripts/build-standalone.mjs",
+  "customizations": {
+    "vscode": { "settings": { "files.eol": "\n" } }
+  }
+}
